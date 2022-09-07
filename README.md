@@ -35,3 +35,15 @@ For example, to execute "bin/console cache:clear" command run:
 ```shell script
 bin/php bin/console cache:clear
 ```
+
+
+To use Webpack, you must:
+
+Enter the cotntainer:
+```shell script
+make docker-main
+```
+and run
+```shell script
+npm run dev
+```
