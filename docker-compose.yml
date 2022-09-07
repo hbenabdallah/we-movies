@@ -1,0 +1,113 @@
+version: '3.3'
+
+services:
+    app:
+        image: project-we-movies:1.0.0
+        build:
+            context: .
+            dockerfile: Dockerfile
+        working_dir: /src
+        hostname: ${VIRTUAL_HOST}
+        container_name: app_${PROJECT_NAME}
+        volumes:
+            - ${PWD}:/src
+        environment:
+            - USER_ID=${UID}
+            - USER_NAME=${USER_NAME}
+            - VIRTUAL_HOST=${VIRTUAL_HOST}
+            - VIRTUAL_PORT=80
+        depends_on:
+            - mysql
+        dns:
+            - 172.16.0.53
+        networks:
+            - nginx-proxy # Link to nginx-proxy network, handled by `docker/docker-compose.nginx-proxy.yml` and run by `make` at `start`, see the `networks` section below.
+            - default
+    hosts:
+        image: ubuntu:20.04
+        environment:
+            - USER_ID=0
+        volumes:
+            - ${ETC}:${HOSTS_ETC}
+            - ${PWD}:/src
+        command: "/bin/true"
+
+    php-cli:
+        image: php-cli:8.1
+        build: ./etc/docker/php
+        working_dir: /src
+        user: ${UID}
+        environment:
+            - ENV=${ENV}
+            - USER_ID=${UID}
+            - USER_NAME=${USER_NAME}
+        depends_on:
+            - mysql
+        volumes:
+            - ${PWD}:/src
+        dns:
+            - 172.16.0.53
+        networks:
+            - nginx-proxy # Link to nginx-proxy network, handled by `docker/docker-compose.nginx-proxy.yml` and run by `make` at `start`, see the `networks` section below.
+            - default
+
+    mysql:
+        image: mysql:8.0
+        container_name: sql_${PROJECT_NAME}
+        command: --default-authentication-plugin=mysql_native_password
+        restart: always
+        volumes:
+            - ${PWD}/var/data/mysql:/var/lib/mysql:rw
+        environment:
+            - MYSQL_ROOT_PASSWORD=root
+            - MYSQL_ROOT_HOST=%
+            - MYSQL_DATABASE=${DATABASE_NAME}
+            - USER_ID=${UID}
+            - USER_NAME=${USER_NAME}
+        dns:
+            - 172.16.0.53
+        networks:
+            - nginx-proxy # Link to nginx-proxy network, handled by `docker/docker-compose.nginx-proxy.yml` and run by `make` at `start`, see the `networks` section below.
+            - default
+
+    node:
+        image: node:14.15.1
+        working_dir: /src
+        volumes:
+            - ${NPM_CACHE}:/.npm
+            - ${PWD}:/src
+        environment:
+            - USER_ID=${UID}
+            - USER_NAME=${USER_NAME}
+        dns:
+            - 172.16.0.53
+        networks:
+            - nginx-proxy # Link to nginx-proxy network, handled by `docker/docker-compose.nginx-proxy.yml` and run by `make` at `start`, see the `networks` section below.
+            - default
+
+    composer:
+        image: composer:2.2
+        working_dir: /src
+        user: ${UID}
+        volumes:
+            #- ./composer.passwd:/etc/passwd
+            - ${PWD}:/src:rw
+            - ${COMPOSER_CACHE}:/.composer:rw
+        environment:
+            - PATH=/composer/bin:${PATH}
+            - COMPOSER_HOME=/composer/.composer
+            - COMPOSER_CACHE_DIR=/.composer
+            - COMPOSER_ALLOW_SUPERUSER=1
+            - USER_ID=${UID}
+            - USER_NAME=${USER_NAME}
+            - GROUP_ID=${GID}
+        dns:
+            - 172.16.0.53
+        networks:
+            - nginx-proxy # Link to nginx-proxy network, handled by `docker/docker-compose.nginx-proxy.yml` and run by `make` at `start`, see the `networks` section below.
+            - default
+
+networks:
+    nginx-proxy:
+        external:
+            name: ${DOCKER_NETWORK}_default

@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+    dns-proxy:
+        image: defreitas/dns-proxy-server
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+        networks:
+            nginx-proxy:
+                ipv4_address: 172.16.0.53
+
+networks:
+    nginx-proxy:
+        external:
+            name: ${DOCKER_NETWORK}_default
